@@ -245,7 +245,7 @@ if __name__ == "__main__":
             acc, input_acc, stats, stats_input = compute_acc(net, testloader)
             writer.add_scalar("test/accuracy", acc, epoch)
             writer.add_scalar("test/input_accuracy", input_acc, epoch)
-            print(f"[Test]: Total blanks:{stats[0]}, Accuracy: {acc}")
+            print(f"[Test]: Total boards:{stats[0]}, Accuracy: {acc}")
             print(
                 f"[Test]: Total given squares:{stats_input[0]}, Accuracy on given digits: {input_acc}"
             )
@@ -254,7 +254,7 @@ if __name__ == "__main__":
             acc, input_acc, stats, stats_input = compute_acc(ema.ema_model, testloader)
             writer.add_scalar("ema_test/accuracy", acc, epoch)
             writer.add_scalar("ema_test/input_accuracy", input_acc, epoch)
-            print(f"[EMA Test]: Total blanks:{stats[0]}, Accuracy: {acc}")
+            print(f"[EMA Test]: Total boards:{stats[0]}, Accuracy: {acc}")
             print(
                 f"[EMA Test]: Total given squares:{stats_input[0]}, Accuracy on given digits: {input_acc}"
             )
