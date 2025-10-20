@@ -43,7 +43,7 @@ export dataset=clevr; accelerate launch --multi-gpu --num_processes=$NUM_GPUS  t
 ```
 export DATA=tetrominoes #{tetrominoes, dsprits, clevr}. Please adjust the model parameters (–model, –J, –ch, –psize) based on the dataset and model you want to evaluate.
 export IMSIZE=32 # {32:tetrominoes, 64:dsprites, 128:clevr}.
-python eval_obj.py --model=akorn --data=${DATA} --J=attn --L=$L$ --model_path=runs/${dataset}_akorn_attn --model_imsize=32 --J=attn --L=1 --T=8 --ch=128 --psize=4 --c_norm=none
+python eval_obj.py --model=akorn --data=${DATA} --J=attn --model_path=runs/${dataset}_akorn_attn --model_imsize=$IMSIZE --J=attn --L=1 --T=8 --ch=128 --psize=4 --c_norm=none
 ```
 
 #### Performance table

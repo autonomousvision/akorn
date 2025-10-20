@@ -244,7 +244,14 @@ def eval_dataset(
             else:
                 labels = ret[1]["pixelwise_class_labels"]
             n_clusters = 11
-
+        elif data == 'tetrominoes':
+            images = ret[0]
+            labels = ret[1]["pixelwise_instance_labels"]
+            n_clusters = 4
+        elif data == 'dsprites':
+            images = ret[0]
+            labels = ret[1]["pixelwise_instance_labels"]
+            n_clusters = 7
         elif data == "clevrtex_camo" or data == "clevrtex_full" or data == "clevrtex_outd":
             images = ret[1]
             labels = ret[2][:, 0]

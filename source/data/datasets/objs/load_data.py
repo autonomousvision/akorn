@@ -76,21 +76,36 @@ def load_data(data, data_root, data_imsize, is_eval=False):
         
     elif data == "dsprites":
         imsize = 64 if data_imsize is None else data_imsize
-        from source.data.datasets.objs.dsprites import get_dsprites_pair
-        dataset = get_dsprites_pair(
-            root="./data/multi_dsprites/",
-            split="train",
-            imsize=imsize,
-        )
+        from source.data.datasets.objs.dsprites import get_dsprites_pair, get_dsprites
+        data_root= "./data/multi_dsprites/"
+        if is_eval:
+            dataset = get_dsprites(
+                root=data_root,
+                split="test",
+                imsize=imsize
+            )
+        else:
+            dataset = get_dsprites_pair(
+                root=data_root,
+                split="train",
+                imsize=imsize,
+            )
         
     elif data == "tetrominoes":
-        from source.data.datasets.objs.tetrominoes import get_tetrominoes_pair
+        from source.data.datasets.objs.tetrominoes import get_tetrominoes_pair, get_tetrominoes
         imsize = 32 if data_imsize is None else data_imsize
-        dataset = get_tetrominoes_pair(
-            root="./data/tetrominoes/",
-            split="train",
-            imsize=imsize,
-        )
+        data_root = "./data/tetrominoes/"
+        if is_eval:
+            dataset = get_tetrominoes(
+                root=data_root,
+                split="test",
+            )
+        else:
+            dataset = get_tetrominoes_pair(
+                root=data_root,
+                split="train",
+                imsize=imsize,
+            )
         
     elif data == "Shapes":
         imsize = 40 if data_imsize is None else data_imsize
