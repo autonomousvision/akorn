@@ -1,4 +1,8 @@
-import sys, os
+from source.layers.common_fns import positionalencoding2d
+from typing import Dict, Callable
+from collections import OrderedDict
+import sys
+import os
 
 # sys.path.append(rootdir)
 import torch
@@ -25,17 +29,17 @@ from source.evals.objs.fgari import calc_fgari_score
 
 from typing import Callable
 
+
 class Wrapper(nn.Module):
     def __init__(self, model):
         super().__init__()
         self.module = model
 
 
-from collections import OrderedDict
-from typing import Dict, Callable
-import torch
-
 noise = 0.0
+
+# Using CPU for PCA can be very slow depending on your CPU hardware.
+USE_GPU_FOR_PCA = True
 
 
 def remove_all_forward_hooks(model: torch.nn.Module) -> None:
@@ -48,7 +52,7 @@ def remove_all_forward_hooks(model: torch.nn.Module) -> None:
 
 def model_preds(model, org_images):
     activation = {}
-    imsize_h, imsize_w =  org_images.shape[-2], org_images.shape[-1]
+    imsize_h, imsize_w = org_images.shape[-2], org_images.shape[-1]
 
     def get_activation(name):
         def hook(model, input, output):
@@ -77,16 +81,17 @@ def model_preds(model, org_images):
             output = model(imgs)
             _xs = None
     v = activation["z"]
-    
+
     if isinstance(model, AKOrN) or isinstance(model, ViT):
         v = F.normalize(v, dim=1)
-    #elif isinstance(model, ViTWrapper):
+    # elif isinstance(model, ViTWrapper):
     #    v = F.normalize(v, dim=2)
     #    v = v.permute(0, 2, 1)[..., 1:]
     #    h, w = int(np.sqrt(x.shape[-1])), int(np.sqrt(x.shape[-1]))  # estimated inpsize
     #    v = v.unflatten(-1, (h, w))
     remove_all_forward_hooks(model)
     return v
+
 
 def clustering(x, h, w, method="spectral", n_clusters=3):
     from sklearn.cluster import KMeans
@@ -110,11 +115,6 @@ def clustering(x, h, w, method="spectral", n_clusters=3):
     else:
         raise ValueError("Clustering method not found")
 
-
-
-
-
-from source.layers.common_fns import positionalencoding2d
 
 def eval(
     model,
@@ -145,9 +145,13 @@ def eval(
     from source.utils import apply_pca_torch
 
     with torch.no_grad():
+
         if pca:
+            if USE_GPU_FOR_PCA:
+                nimg = nimg.to('cuda')
             pcaimg_ = apply_pca_torch(nimg, n_components=pca_dim)
-            x = pcaimg_
+            x = pcaimg_.to('cpu') if USE_GPU_FOR_PCA else pcaimg_
+
         else:
             x = nimg
 
@@ -155,7 +159,8 @@ def eval(
         _x = x[idx]
         pred = clustering(_x, *_x.shape[1:], method, n_clusters)
         pred = torch.nn.Upsample(
-            scale_factor=(images.shape[-2]/pred.shape[-2], images.shape[-1]/pred.shape[-1]),
+            scale_factor=(images.shape[-2]/pred.shape[-2],
+                          images.shape[-1]/pred.shape[-1]),
             mode='nearest')(torch.Tensor(pred[None, None]).float())[0, 0]
         preds.append(pred)
 
@@ -171,7 +176,7 @@ def eval(
     _gt = ((gt > 0).float() * gt).long()  # set ignore bg (-1) to 0
     # compute fgari
     scores["fgari"] = np.array(calc_fgari_score(_gt, preds))
-  
+
     # compute mean best overlap
     score, _scores = calc_mean_best_overlap(gt.numpy(), preds.numpy())
     scores["mbo"] = score
@@ -189,7 +194,8 @@ def get_loader(data, data_root, imsize, batchsize):
 
     from source.data.datasets.objs.load_data import load_data
 
-    dataset, imsize, collate_fn = load_data(data, data_root, imsize, is_eval=True)
+    dataset, imsize, collate_fn = load_data(
+        data, data_root, imsize, is_eval=True)
 
     if data == "clevrtex_full" or data == "clevrtex_outd" or data == "clevrtex_camo":
         loader = torch.utils.data.DataLoader(
@@ -298,14 +304,14 @@ def print_stats(scores):
         mbos.append(_s["mbo_scores"])
         if "mbo_c" in _s:
             mbocs.append(_s["mbo_c_scores"])
-    print(np.concatenate(fgaris, 0).mean(), np.concatenate(fgaris, 0).std())
+    print("fgari: ", np.concatenate(fgaris, 0).mean(), np.concatenate(fgaris, 0).std())
     _mbos = np.concatenate(mbos)
     _mbos = _mbos[_mbos != -1]
-    print(np.mean(_mbos), np.std(_mbos))
+    print("mbo: ", np.mean(_mbos), np.std(_mbos))
     if len(mbocs) > 0:
         _mbocs = np.concatenate(mbocs)
         _mbocs = _mbocs[_mbocs != -1]
-        print(np.mean(_mbocs), np.std(_mbocs))
+        print("mbo_c: ", np.mean(_mbocs), np.std(_mbocs))
 
 
 if __name__ == "__main__":
@@ -314,13 +320,16 @@ if __name__ == "__main__":
 
     # Eval options
     parser.add_argument("--model_path", type=str, help="path to the model")
-    parser.add_argument("--saccade_r", type=int, default=1, help="Uptiling factor")
+    parser.add_argument("--saccade_r", type=int,
+                        default=1, help="Uptiling factor")
     parser.add_argument("--pca", type=str2bool, default=True)
 
     # Data loading
     parser.add_argument("--limit_cores_used", type=str2bool, default=False)
-    parser.add_argument("--cpu_core_start", type=int, default=0, help="start core")
-    parser.add_argument("--cpu_core_end", type=int, default=32, help="end core")
+    parser.add_argument("--cpu_core_start", type=int,
+                        default=0, help="start core")
+    parser.add_argument("--cpu_core_end", type=int,
+                        default=32, help="end core")
     parser.add_argument("--data", type=str, default="clevrtex_full")
     parser.add_argument(
         "--data_root",
@@ -371,7 +380,8 @@ if __name__ == "__main__":
     )
 
     # AKOrN options
-    parser.add_argument("--N", type=int, default=4, help="num of rotating dimensions")
+    parser.add_argument("--N", type=int, default=4,
+                        help="num of rotating dimensions")
     parser.add_argument("--J", type=str, default="conv", help="connectivity")
     parser.add_argument("--use_omega", type=str2bool, default=False)
     parser.add_argument("--global_omg", type=str2bool, default=False)
@@ -407,7 +417,8 @@ if __name__ == "__main__":
 
     if args.limit_cores_used:
         def worker_init_fn(worker_id):
-            os.sched_setaffinity(0, range(args.cpu_core_start, args.cpu_core_end))
+            os.sched_setaffinity(
+                0, range(args.cpu_core_start, args.cpu_core_end))
 
     if args.model == "akorn":
         net = AKOrN(
@@ -415,7 +426,7 @@ if __name__ == "__main__":
             ch=args.ch,
             L=args.L,
             T=args.T,
-            J=args.J, # "conv" or "attn",
+            J=args.J,  # "conv" or "attn",
             use_omega=args.use_omega,
             global_omg=args.global_omg,
             c_norm=args.c_norm,
@@ -442,9 +453,10 @@ if __name__ == "__main__":
             maxpool=args.maxpool,
             gta=args.gta,
         ).cuda()
-    
+
     model = EMA(net)
-    model.load_state_dict(torch.load(args.model_path, weights_only=True)["model_state_dict"])
+    model.load_state_dict(torch.load(
+        args.model_path, weights_only=True)["model_state_dict"])
     model = model.ema_model
 
     with torch.no_grad():

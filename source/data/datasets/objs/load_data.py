@@ -58,21 +58,24 @@ def load_data(data, data_root, data_imsize, is_eval=False):
         )
     elif data == "coco":
         imsize = 256 if data_imsize is None else data_imsize
-        from source.data.datasets.objs.coco import get_coco_dataset
-        data_root = "./data/COCO"
+        from source.data.datasets.objs.coco import build_coco_dataset
+        data_root = "./data/COCO" if data_root is None else data_root
         if not is_eval:
             raise ValueError("COCO dataset is only for evaluation")
         else:
-            dataset = get_coco_dataset(root=data_root)
+            dataset, collater = build_coco_dataset(data_root, (imsize, imsize), True, True)
+            collate_fn = collater
+            dataset.load_sem_mask = True
+            
         
     elif data == "pascal":
         imsize = 256 if data_imsize is None else data_imsize
-        from source.data.datasets.objs.pascal import get_pascal_dataset
+        from source.data.datasets.objs.pascal import get_pascal
         data_root = "./data/VOCdevkit/VOC2012"
         if not is_eval:
             raise ValueError("Pascal dataset is only for evaluation")
         else:
-            dataset = get_coco_dataset(root=data_root)
+            dataset = get_pascal(data_root, 'val', 256, 256)
         
     elif data == "dsprites":
         imsize = 64 if data_imsize is None else data_imsize

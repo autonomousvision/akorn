@@ -136,7 +136,6 @@ class AKOrN(nn.Module):
             nn.ReLU(),
             nn.Linear(4 * ch, ch),
         )
-
         self.fixed_ptb = False
         self.autorescale = autorescale
 
